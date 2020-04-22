@@ -287,11 +287,13 @@ class Router {
         }
         if (method !== 'pushState' || utils_1.getURL() !== as) {
             // @ts-ignore method should always exist on history
-            window.history[method]({
-                url,
-                as,
-                options,
-            }, null, as);
+            try {
+                window.history[method]({
+                    url,
+                    as,
+                    options
+                }, null, as);
+            } catch (e) {}
         }
     }
     getRouteInfo(route, pathname, query, as, shallow = false) {

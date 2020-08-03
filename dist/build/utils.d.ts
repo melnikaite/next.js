@@ -1,44 +1,40 @@
-import { Redirect, Rewrite } from '../lib/check-custom-routes';
+import '../next-server/server/node-polyfill-fetch';
+import { CustomRoutes } from '../lib/load-custom-routes';
+import { GetStaticPaths } from 'next/types';
+import { BuildManifest } from '../next-server/server/get-page-files';
 export declare function collectPages(directory: string, pageExtensions: string[]): Promise<string[]>;
 export interface PageInfo {
-    isAmp?: boolean;
     isHybridAmp?: boolean;
     size: number;
     totalSize: number;
     static: boolean;
     isSsg: boolean;
     ssgPageRoutes: string[] | null;
-    serverBundle: string;
+    hasSsgFallback: boolean;
 }
-export declare function printTreeView(list: readonly string[], pageInfos: Map<string, PageInfo>, serverless: boolean, { distPath, buildId, pagesDir, pageExtensions, buildManifest, isModern, }: {
+export declare function printTreeView(list: readonly string[], pageInfos: Map<string, PageInfo>, serverless: boolean, { distPath, buildId, pagesDir, pageExtensions, buildManifest, isModern, useStatic404, }: {
     distPath: string;
     buildId: string;
     pagesDir: string;
     pageExtensions: string[];
-    buildManifest: BuildManifestShape;
+    buildManifest: BuildManifest;
     isModern: boolean;
+    useStatic404: boolean;
 }): Promise<void>;
-export declare function printCustomRoutes({ redirects, rewrites, }: {
-    redirects: Redirect[];
-    rewrites: Rewrite[];
-}): void;
-declare type BuildManifestShape = {
-    pages: {
-        [k: string]: string[];
-    };
-};
-export declare function getSharedSizes(distPath: string, buildManifest: BuildManifestShape, buildId: string, isModern: boolean, pageInfos: Map<string, PageInfo>): Promise<{
-    total: number;
-    files: {
-        [page: string]: number;
-    };
+export declare function printCustomRoutes({ redirects, rewrites, headers, }: CustomRoutes): void;
+export declare function getJsPageSizeInKb(page: string, distPath: string, buildManifest: BuildManifest, isModern: boolean): Promise<[number, number]>;
+export declare function buildStaticPaths(page: string, getStaticPaths: GetStaticPaths): Promise<{
+    paths: string[];
+    fallback: boolean;
 }>;
-export declare function getPageSizeInKb(page: string, distPath: string, buildId: string, buildManifest: BuildManifestShape, isModern: boolean): Promise<[number, number]>;
 export declare function isPageStatic(page: string, serverBundle: string, runtimeEnvConfig: any): Promise<{
-    static?: boolean;
-    prerender?: boolean;
+    isStatic?: boolean;
+    isAmpOnly?: boolean;
     isHybridAmp?: boolean;
+    hasServerProps?: boolean;
+    hasStaticProps?: boolean;
     prerenderRoutes?: string[] | undefined;
+    prerenderFallback?: boolean | undefined;
 }>;
-export declare function hasCustomAppGetInitialProps(_appBundle: string, runtimeEnvConfig: any): boolean;
-export {};
+export declare function hasCustomGetInitialProps(bundle: string, runtimeEnvConfig: any, checkingApp: boolean): boolean;
+export declare function getNamedExports(bundle: string, runtimeEnvConfig: any): Array<string>;

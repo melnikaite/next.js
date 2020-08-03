@@ -1,6 +1,7 @@
 /// <reference types="node" />
 import { IncomingMessage, ServerResponse } from 'http';
 import { UrlWithParsedQuery } from 'url';
+import { ParsedUrlQuery } from 'querystring';
 export declare const route: (path: string) => (pathname: string | null | undefined, params?: any) => any;
 export declare type Params = {
     [param: string]: any;
@@ -19,6 +20,7 @@ export declare type Route = {
     check?: boolean;
     statusCode?: number;
     name: string;
+    requireBasePath?: false;
     fn: (req: IncomingMessage, res: ServerResponse, params: Params, parsedUrl: UrlWithParsedQuery) => Promise<RouteResult> | RouteResult;
 };
 export declare type DynamicRoutes = Array<{
@@ -26,21 +28,33 @@ export declare type DynamicRoutes = Array<{
     match: RouteMatch;
 }>;
 export declare type PageChecker = (pathname: string) => Promise<boolean>;
+export declare const prepareDestination: (destination: string, params: Params, query: ParsedUrlQuery, appendParamsToQuery: boolean, basePath: string) => {
+    newUrl: string;
+    parsedDestination: UrlWithParsedQuery;
+};
 export default class Router {
-    routes: Route[];
+    basePath: string;
+    headers: Route[];
     fsRoutes: Route[];
+    rewrites: Route[];
+    redirects: Route[];
     catchAllRoute: Route;
     pageChecker: PageChecker;
     dynamicRoutes: DynamicRoutes;
-    constructor({ routes, fsRoutes, catchAllRoute, dynamicRoutes, pageChecker, }: {
-        routes: Route[];
+    useFileSystemPublicRoutes: boolean;
+    constructor({ basePath, headers, fsRoutes, rewrites, redirects, catchAllRoute, dynamicRoutes, pageChecker, useFileSystemPublicRoutes, }: {
+        basePath: string;
+        headers: Route[];
         fsRoutes: Route[];
+        rewrites: Route[];
+        redirects: Route[];
         catchAllRoute: Route;
         dynamicRoutes: DynamicRoutes | undefined;
         pageChecker: PageChecker;
+        useFileSystemPublicRoutes: boolean;
     });
     setDynamicRoutes(routes?: DynamicRoutes): void;
-    add(route: Route): void;
+    addFsRoute(fsRoute: Route): void;
     execute(req: IncomingMessage, res: ServerResponse, parsedUrl: UrlWithParsedQuery): Promise<boolean>;
 }
 export {};

@@ -11,6 +11,7 @@ export default class DevServer extends Server {
     private webpackWatcher?;
     private hotReloader?;
     private isCustomServer;
+    protected sortedRoutes?: string[];
     protected staticPathsWorker: import('jest-worker').default & {
         loadStaticPaths: typeof import('./static-paths-worker').loadStaticPaths;
     };
@@ -50,7 +51,7 @@ export default class DevServer extends Server {
     }): boolean;
     protected getStaticPaths(pathname: string): Promise<{
         staticPaths: string[] | undefined;
-        hasStaticFallback: boolean;
+        fallbackMode: false | 'static' | 'blocking';
     }>;
     protected ensureApiPage(pathname: string): Promise<any>;
     renderToHTML(req: IncomingMessage, res: ServerResponse, pathname: string, query: {

@@ -7,7 +7,7 @@ export declare type SsgRoute = {
 };
 export declare type DynamicSsgRoute = {
     routeRegex: string;
-    fallback: string | false;
+    fallback: string | null | false;
     dataRoute: string;
     dataRouteRegex: string;
 };
@@ -19,6 +19,8 @@ export declare type PrerenderManifest = {
     dynamicRoutes: {
         [route: string]: DynamicSsgRoute;
     };
+    notFoundRoutes: string[];
     preview: __ApiPreviewProps;
 };
-export default function build(dir: string, conf?: null, reactProductionProfiling?: boolean): Promise<void>;
+export default function build(dir: string, conf?: null, reactProductionProfiling?: boolean, debugOutput?: boolean): Promise<void>;
+export declare type ClientSsgManifest = Set<string>;

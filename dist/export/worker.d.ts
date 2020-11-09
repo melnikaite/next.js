@@ -26,11 +26,13 @@ interface ExportPageInput {
     subFolders: string;
     serverless: boolean;
     optimizeFonts: boolean;
+    optimizeImages: boolean;
 }
 interface ExportPageResults {
     ampValidations: AmpValidation[];
     fromBuildExportRevalidate?: number;
     error?: boolean;
+    ssgNotFound?: boolean;
 }
 interface RenderOpts {
     runtimeConfig?: {
@@ -45,7 +47,11 @@ interface RenderOpts {
     hybridAmp?: boolean;
     inAmpMode?: boolean;
     optimizeFonts?: boolean;
+    optimizeImages?: boolean;
     fontManifest?: FontManifest;
+    locales?: string[];
+    locale?: string;
+    defaultLocale?: string;
 }
-export default function exportPage({ path, pathMap, distDir, outDir, pagesDataDir, renderOpts, buildExport, serverRuntimeConfig, subFolders, serverless, optimizeFonts, }: ExportPageInput): Promise<ExportPageResults>;
+export default function exportPage({ path, pathMap, distDir, outDir, pagesDataDir, renderOpts, buildExport, serverRuntimeConfig, subFolders, serverless, optimizeFonts, optimizeImages, }: ExportPageInput): Promise<ExportPageResults>;
 export {};

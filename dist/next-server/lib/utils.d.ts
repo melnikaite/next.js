@@ -5,7 +5,7 @@ import { ComponentType } from 'react';
 import { UrlObject } from 'url';
 import { ManifestItem } from '../server/load-components';
 import { NextRouter } from './router/router';
-import { Env } from '../../lib/load-env-config';
+import { Env } from '@next/env';
 import { BuildManifest } from '../server/get-page-files';
 /**
  * Types used by both next and next-server
@@ -50,8 +50,11 @@ export declare type BaseContext = {
     res?: ServerResponse;
     [k: string]: any;
 };
+export declare type HeadEntry = [string, {
+    [key: string]: any;
+}];
 export declare type NEXT_DATA = {
-    props: any;
+    props: Record<string, any>;
     page: string;
     query: ParsedUrlQuery;
     buildId: string;
@@ -71,6 +74,10 @@ export declare type NEXT_DATA = {
     customServer?: boolean;
     gip?: boolean;
     appGip?: boolean;
+    head: HeadEntry[];
+    locale?: string;
+    locales?: string[];
+    defaultLocale?: string;
 };
 /**
  * `Next` context
@@ -131,17 +138,24 @@ export declare type DocumentInitialProps = RenderPageResult & {
 export declare type DocumentProps = DocumentInitialProps & {
     __NEXT_DATA__: NEXT_DATA;
     dangerousAsPath: string;
+    docComponentsRendered: {
+        Html?: boolean;
+        Main?: boolean;
+        Head?: boolean;
+        NextScript?: boolean;
+    };
     buildManifest: BuildManifest;
     ampPath: string;
     inAmpMode: boolean;
     hybridAmp: boolean;
     isDevelopment: boolean;
-    files: string[];
     dynamicImports: ManifestItem[];
     assetPrefix?: string;
     canonicalBase: string;
     headTags: any[];
     unstable_runtimeJS?: false;
+    devOnlyCacheBusterQueryString: string;
+    locale?: string;
 };
 /**
  * Next `API` route request

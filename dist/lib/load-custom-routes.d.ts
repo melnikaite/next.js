@@ -15,6 +15,7 @@ export declare type Header = {
         value: string;
     }>;
 };
+export declare const allowedStatusCodes: Set<number>;
 export declare function getRedirectStatus(route: Redirect): number;
 export declare function normalizeRouteRegex(regex: string): string;
 export declare type RouteType = 'rewrite' | 'redirect' | 'header';

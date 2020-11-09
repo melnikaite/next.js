@@ -1,5 +1,6 @@
 declare type postProcessOptions = {
     optimizeFonts: boolean;
+    optimizeImages: boolean;
 };
 declare type renderOptions = {
     getFontDefinition?: (url: string) => string;

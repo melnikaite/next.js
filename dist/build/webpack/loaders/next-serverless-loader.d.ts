@@ -6,6 +6,7 @@ export declare type ServerlessLoaderQuery = {
     absoluteAppPath: string;
     absoluteDocumentPath: string;
     absoluteErrorPath: string;
+    absolute404Path: string;
     buildId: string;
     assetPrefix: string;
     generateEtags: string;
@@ -15,6 +16,7 @@ export declare type ServerlessLoaderQuery = {
     runtimeConfig: string;
     previewProps: string;
     loadedEnvFiles: string;
+    i18n: string;
 };
 declare const nextServerlessLoader: loader.Loader;
 export default nextServerlessLoader;

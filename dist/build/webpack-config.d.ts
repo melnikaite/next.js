@@ -1,6 +1,8 @@
 import webpack from 'webpack';
+import { Rewrite } from '../lib/load-custom-routes';
 import { WebpackEntrypoints } from './entries';
-export default function getBaseWebpackConfig(dir: string, { buildId, config, dev, isServer, pagesDir, tracer, target, reactProductionProfiling, entrypoints, }: {
+export declare function attachReactRefresh(webpackConfig: webpack.Configuration, targetLoader: webpack.RuleSetUseItem): void;
+export default function getBaseWebpackConfig(dir: string, { buildId, config, dev, isServer, pagesDir, tracer, target, reactProductionProfiling, entrypoints, rewrites, }: {
     buildId: string;
     config: any;
     dev?: boolean;
@@ -10,4 +12,5 @@ export default function getBaseWebpackConfig(dir: string, { buildId, config, dev
     tracer?: any;
     reactProductionProfiling?: boolean;
     entrypoints: WebpackEntrypoints;
+    rewrites: Rewrite[];
 }): Promise<webpack.Configuration>;

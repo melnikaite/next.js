@@ -4,12 +4,17 @@ import { ParsedUrlQuery } from 'querystring';
 import { UrlWithParsedQuery } from 'url';
 import { PrerenderManifest } from '../../build';
 import { CustomRoutes } from '../../lib/load-custom-routes';
+import { getRouteMatcher } from '../lib/router/utils';
 import { __ApiPreviewProps } from './api-utils';
 import Router, { DynamicRoutes, PageChecker, Params, Route } from './router';
 import './node-polyfill-fetch';
 import { PagesManifest } from '../../build/webpack/plugins/pages-manifest-plugin';
 import { FontManifest } from './font-utils';
 declare type NextConfig = any;
+declare type DynamicRouteItem = {
+    page: string;
+    match: ReturnType<typeof getRouteMatcher>;
+};
 export declare type ServerConstructor = {
     /**
      * Where the Next project is located - @default '.'
@@ -90,6 +95,7 @@ export default class Server {
         pageChecker: PageChecker;
         useFileSystemPublicRoutes: boolean;
         dynamicRoutes: DynamicRoutes | undefined;
+        locales: string[];
     };
     private getPagePath;
     protected hasPage(pathname: string): Promise<boolean>;
@@ -103,12 +109,7 @@ export default class Server {
      */
     private handleApiRequest;
     protected generatePublicRoutes(): Route[];
-    protected getDynamicRoutes(): {
-        page: string;
-        match: (pathname: string | null | undefined) => false | {
-            [paramName: string]: string | string[];
-        };
-    }[];
+    protected getDynamicRoutes(): Array<DynamicRouteItem>;
     private handleCompression;
     protected run(req: IncomingMessage, res: ServerResponse, parsedUrl: UrlWithParsedQuery): Promise<void>;
     protected sendHTML(req: IncomingMessage, res: ServerResponse, html: string): Promise<void>;
@@ -120,10 +121,10 @@ export default class Server {
     }>;
     private renderToHTMLWithComponents;
     renderToHTML(req: IncomingMessage, res: ServerResponse, pathname: string, query?: ParsedUrlQuery): Promise<string | null>;
-    renderError(err: Error | null, req: IncomingMessage, res: ServerResponse, pathname: string, query?: ParsedUrlQuery): Promise<void>;
+    renderError(err: Error | null, req: IncomingMessage, res: ServerResponse, pathname: string, query?: ParsedUrlQuery, setHeaders?: boolean): Promise<void>;
     private customErrorNo404Warn;
     renderErrorToHTML(err: Error | null, req: IncomingMessage, res: ServerResponse, _pathname: string, query?: ParsedUrlQuery): Promise<string | null>;
-    render404(req: IncomingMessage, res: ServerResponse, parsedUrl?: UrlWithParsedQuery): Promise<void>;
+    render404(req: IncomingMessage, res: ServerResponse, parsedUrl?: UrlWithParsedQuery, setHeaders?: boolean): Promise<void>;
     serveStatic(req: IncomingMessage, res: ServerResponse, path: string, parsedUrl?: UrlWithParsedQuery): Promise<void>;
     private _validFilesystemPathSet;
     private getFilesystemPaths;

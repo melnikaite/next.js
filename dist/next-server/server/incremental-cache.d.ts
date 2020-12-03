@@ -6,6 +6,7 @@ declare type IncrementalCacheValue = {
     pageData?: any;
     isStale?: boolean;
     isNotFound?: boolean;
+    isRedirect?: boolean;
     curRevalidate?: number | false;
     revalidateAfter: number | false;
 };
@@ -18,12 +19,14 @@ export declare class IncrementalCache {
     };
     prerenderManifest: PrerenderManifest;
     cache: LRUCache<string, IncrementalCacheValue>;
-    constructor({ max, dev, distDir, pagesDir, flushToDisk, }: {
+    locales?: string[];
+    constructor({ max, dev, distDir, pagesDir, flushToDisk, locales, }: {
         dev: boolean;
         max?: number;
         distDir: string;
         pagesDir: string;
         flushToDisk?: boolean;
+        locales?: string[];
     });
     private getSeedPath;
     private calculateRevalidate;
@@ -33,6 +36,7 @@ export declare class IncrementalCache {
         html?: string;
         pageData?: any;
         isNotFound?: boolean;
+        isRedirect?: boolean;
     }, revalidateSeconds?: number | false): Promise<void>;
 }
 export {};

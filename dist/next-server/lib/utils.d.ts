@@ -7,6 +7,7 @@ import { ManifestItem } from '../server/load-components';
 import { NextRouter } from './router/router';
 import { Env } from '@next/env';
 import { BuildManifest } from '../server/get-page-files';
+import { DomainLocales } from '../server/config';
 /**
  * Types used by both next and next-server
  */
@@ -74,6 +75,7 @@ export declare type NEXT_DATA = {
     locale?: string;
     locales?: string[];
     defaultLocale?: string;
+    domainLocales?: DomainLocales;
 };
 /**
  * `Next` context
@@ -150,7 +152,12 @@ export declare type DocumentProps = DocumentInitialProps & {
     canonicalBase: string;
     headTags: any[];
     unstable_runtimeJS?: false;
+    unstable_JsPreload?: false;
     devOnlyCacheBusterQueryString: string;
+    scriptLoader: {
+        defer?: string[];
+        eager?: any[];
+    };
     locale?: string;
 };
 /**

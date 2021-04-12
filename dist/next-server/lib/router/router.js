@@ -195,6 +195,22 @@ function prepareUrlAs(router, url, as) {// If url and as provided as an object r
     return {url: preparedUrl, as: asHadOrigin ? preparedAs : addBasePath(preparedAs)};
 }
 
+function resolveDynamicRoute(pathname, pages) {
+    const cleanPathname = (0, _normalizeTrailingSlash.removePathTrailingSlash)((0, _denormalizePagePath.denormalizePagePath)(pathname));
+    if (cleanPathname === '/404' || cleanPathname === '/_error') {
+        return pathname;
+    }// handle resolving href for dynamic routes
+    if (!pages.includes(cleanPathname)) {// eslint-disable-next-line array-callback-return
+        pages.some(page => {
+            if ((0, _isDynamic.isDynamicRoute)(page) && (0, _routeRegex.getRouteRegex)(page).re.test(cleanPathname)) {
+                pathname = page;
+                return true;
+            }
+        });
+    }
+    return (0, _normalizeTrailingSlash.removePathTrailingSlash)(pathname);
+}
+
 const manualScrollRestoration = process.env.__NEXT_SCROLL_RESTORATION && typeof window !== 'undefined' && 'scrollRestoration' in window.history && !!function () {
     try {
         let v = '__next';// eslint-disable-next-line no-sequences
@@ -251,6 +267,7 @@ class Router {
     /**
      * Map of all components loaded in `Router`
      */ // Static Data Cache
+// In-flight Server Data Requests, for deduping
     constructor(_pathname, _query, _as, {
         initialProps,
         pageLoader,
@@ -263,7 +280,8 @@ class Router {
         locale,
         locales,
         defaultLocale,
-        domainLocales
+        domainLocales,
+        isPreview
     }) {
         this.route = void 0;
         this.pathname = void 0;
@@ -272,6 +290,7 @@ class Router {
         this.basePath = void 0;
         this.components = void 0;
         this.sdc = {};
+        this.sdr = {};
         this.sub = void 0;
         this.clc = void 0;
         this.pageLoader = void 0;
@@ -287,6 +306,8 @@ class Router {
         this.defaultLocale = void 0;
         this.domainLocales = void 0;
         this.isReady = void 0;
+        this.isPreview = void 0;
+        this.isLocaleDomain = void 0;
         this._idx = 0;
         this.onPopState = e => {
             const state = e.state;
@@ -376,11 +397,14 @@ class Router {
         this.isSsr = true;
         this.isFallback = isFallback;
         this.isReady = !!(self.__NEXT_DATA__.gssp || self.__NEXT_DATA__.gip || !autoExportDynamic && !self.location.search);
+        this.isPreview = !!isPreview;
+        this.isLocaleDomain = false;
         if (process.env.__NEXT_I18N_SUPPORT) {
             this.locale = locale;
             this.locales = locales;
             this.defaultLocale = defaultLocale;
             this.domainLocales = domainLocales;
+            this.isLocaleDomain = !!detectDomainLocale(domainLocales, self.location.hostname);
         }
         if (typeof window !== 'undefined') {// make sure "as" doesn't start with double slashes or else it can
 // throw an error as it's considered invalid
@@ -485,7 +509,7 @@ class Router {
 // moves this on its own due to the return
             if (process.env.__NEXT_I18N_SUPPORT) {// if we are navigating to a domain locale ensure we redirect to the
 // correct domain
-                if (!didNavigate && detectedDomain && self.location.hostname !== detectedDomain.domain) {
+                if (!didNavigate && detectedDomain && this.isLocaleDomain && self.location.hostname !== detectedDomain.domain) {
                     const asNoBasePath = delBasePath(as);
                     window.location.href = `http${detectedDomain.http ? '' : 's'}://${detectedDomain.domain}${addBasePath(`${this.locale === detectedDomain.defaultLocale ? '' : `/${this.locale}`}${asNoBasePath === '/' ? '' : asNoBasePath}` || '/')}`;// this was previously a return but was removed in favor
 // of better dead code elimination with regenerator runtime
@@ -536,39 +560,41 @@ class Router {
 // do a server-side transition:
             window.location.href = as;
             return false;
-        }
-        parsed = this._resolveHref(parsed, pages);
-        if (parsed.pathname !== pathname) {
-            pathname = parsed.pathname;
-            url = (0, _utils.formatWithValidation)(parsed);
-        }// url and as should always be prefixed with basePath by this
-// point by either next/link or router.push/replace so strip the
-// basePath from the pathname to match the pages dir 1-to-1
-        pathname = pathname ? (0, _normalizeTrailingSlash.removePathTrailingSlash)(delBasePath(pathname)) : pathname;// If asked to change the current URL we should reload the current page
+        }// If asked to change the current URL we should reload the current page
 // (not location.reload() but reload getInitialProps and other Next.js stuffs)
 // We also need to set the method = replaceState always
 // as this should not go into the history (That's how browsers work)
 // We should compare the new asPath to the current asPath, not the url
         if (!this.urlIsNew(cleanedAs) && !localeChange) {
             method = 'replaceState';
-        }
-        let route = (0, _normalizeTrailingSlash.removePathTrailingSlash)(pathname);// we need to resolve the as value using rewrites for dynamic SSG
+        }// we need to resolve the as value using rewrites for dynamic SSG
 // pages to allow building the data URL correctly
-        let resolvedAs = as;
-        if (process.env.__NEXT_HAS_REWRITES && as.startsWith('/')) {
-            const rewritesResult = (0, _resolveRewrites.default)(addBasePath(addLocale(delBasePath(as), this.locale)), pages, rewrites, query, p => this._resolveHref({pathname: p}, pages).pathname, this.locales);
-            resolvedAs = rewritesResult.asPath;
-            if (rewritesResult.matchedPage && rewritesResult.resolvedHref) {// if this directly matches a page we need to update the href to
+        let resolvedAs = as;// url and as should always be prefixed with basePath by this
+// point by either next/link or router.push/replace so strip the
+// basePath from the pathname to match the pages dir 1-to-1
+        pathname = pathname ? (0, _normalizeTrailingSlash.removePathTrailingSlash)(delBasePath(pathname)) : pathname;
+        if (pathname !== '/_error') {
+            if (process.env.__NEXT_HAS_REWRITES && as.startsWith('/')) {
+                const rewritesResult = (0, _resolveRewrites.default)(addBasePath(addLocale(delBasePath(as), this.locale)), pages, rewrites, query, p => resolveDynamicRoute(p, pages), this.locales);
+                resolvedAs = rewritesResult.asPath;
+                if (rewritesResult.matchedPage && rewritesResult.resolvedHref) {// if this directly matches a page we need to update the href to
 // allow the correct page chunk to be loaded
-                route = rewritesResult.resolvedHref;
-                pathname = rewritesResult.resolvedHref;
-                parsed.pathname = pathname;
-                url = (0, _utils.formatWithValidation)(parsed);
+                    pathname = rewritesResult.resolvedHref;
+                    parsed.pathname = pathname;
+                    url = (0, _utils.formatWithValidation)(parsed);
+                }
+            } else {
+                parsed.pathname = resolveDynamicRoute(pathname, pages);
+                if (parsed.pathname !== pathname) {
+                    pathname = parsed.pathname;
+                    url = (0, _utils.formatWithValidation)(parsed);
+                }
             }
         }
+        const route = (0, _normalizeTrailingSlash.removePathTrailingSlash)(pathname);
         if (!isLocalURL(as)) {
             if (process.env.NODE_ENV !== 'production') {
-                throw new Error(`Invalid href: "${url}" and as: "${as}", received relative href and external as` + `\nSee more info: https://err.sh/next.js/invalid-relative-url-external-as`);
+                throw new Error(`Invalid href: "${url}" and as: "${as}", received relative href and external as` + `\nSee more info: https://nextjs.org/docs/messages/invalid-relative-url-external-as`);
             }
             window.location.href = as;
             return false;
@@ -587,7 +613,7 @@ class Router {
                     if (process.env.NODE_ENV !== 'production') {
                         console.warn(`${shouldInterpolate ? `Interpolating href` : `Mismatching \`as\` and \`href\``} failed to manually provide ` + `the params: ${missingParams.join(', ')} in the \`href\`'s \`query\``);
                     }
-                    throw new Error((shouldInterpolate ? `The provided \`href\` (${url}) value is missing query values (${missingParams.join(', ')}) to be interpolated properly. ` : `The provided \`as\` value (${asPathname}) is incompatible with the \`href\` value (${route}). `) + `Read more: https://err.sh/vercel/next.js/${shouldInterpolate ? 'href-interpolation-failed' : 'incompatible-href-as'}`);
+                    throw new Error((shouldInterpolate ? `The provided \`href\` (${url}) value is missing query values (${missingParams.join(', ')}) to be interpolated properly. ` : `The provided \`as\` value (${asPathname}) is incompatible with the \`href\` value (${route}). `) + `Read more: https://nextjs.org/docs/messages/${shouldInterpolate ? 'href-interpolation-failed' : 'incompatible-href-as'}`);
                 }
             } else if (shouldInterpolate) {
                 as = (0, _utils.formatWithValidation)(Object.assign({}, parsedAs, {
@@ -600,6 +626,7 @@ class Router {
         }
         Router.events.emit('routeChangeStart', as, routeProps);
         try {
+            var _self$__NEXT_DATA__$p, _self$__NEXT_DATA__$p2;
             let routeInfo = await this.getRouteInfo(route, pathname, query, as, resolvedAs, routeProps);
             let {error, props, __N_SSG, __N_SSP} = routeInfo;// handle redirect on client-transition
             if ((__N_SSG || __N_SSP) && props) {
@@ -609,7 +636,7 @@ class Router {
 // it's not
                     if (destination.startsWith('/')) {
                         const parsedHref = (0, _parseRelativeUrl.parseRelativeUrl)(destination);
-                        this._resolveHref(parsedHref, pages, false);
+                        parsedHref.pathname = resolveDynamicRoute(parsedHref.pathname, pages);
                         if (pages.includes(parsedHref.pathname)) {
                             const {url: newUrl, as: newAs} = prepareUrlAs(this, destination, destination);
                             return this.change(method, newUrl, newAs, options);
@@ -618,7 +645,8 @@ class Router {
                     window.location.href = destination;
                     return new Promise(() => {
                     });
-                }// handle SSG data 404
+                }
+                this.isPreview = !!props.__N_PREVIEW;// handle SSG data 404
                 if (props.notFound === SSG_DATA_NOT_FOUND) {
                     let notFoundRoute;
                     try {
@@ -637,6 +665,10 @@ class Router {
                 window.next.isPrerendered = appComp.getInitialProps === appComp.origGetInitialProps && !routeInfo.Component.getInitialProps;
             }// shallow routing is only allowed for same page URL changes.
             const isValidShallowRoute = options.shallow && this.route === route;
+            if (options._h && pathname === '/_error' && ((_self$__NEXT_DATA__$p = self.__NEXT_DATA__.props) == null ? void 0 : (_self$__NEXT_DATA__$p2 = _self$__NEXT_DATA__$p.pageProps) == null ? void 0 : _self$__NEXT_DATA__$p2.statusCode) === 500 && props != null && props.pageProps) {// ensure statusCode is still correct for static 500 page
+// when updating query information
+                props.pageProps.statusCode = 500;
+            }
             await this.set(route, pathname, query, cleanedAs, routeInfo, forcedScroll || (isValidShallowRoute || !options.scroll ? null : {
                 x: 0,
                 y: 0
@@ -682,12 +714,12 @@ class Router {
                         options,
                         __N: true,
                         idx: this._idx = method !== 'pushState' ? this._idx : this._idx + 1
-                    },
-                    // Most browsers currently ignores this parameter, although they may use it in the future.
-                    // Passing the empty string here should be safe against future changes to the method.
-                    // https://developer.mozilla.org/en-US/docs/Web/API/History/replaceState
+                    },// Most browsers currently ignores this parameter, although they may use it in the future.
+// Passing the empty string here should be safe against future changes to the method.
+// https://developer.mozilla.org/en-US/docs/Web/API/History/replaceState
                     '', as);
             } catch (e) {
+
             }
         }
     }
@@ -798,8 +830,9 @@ class Router {
     }
 
     scrollToHash(as) {
-        const [, hash] = as.split('#');// Scroll to top if the hash is just `#` with no value
-        if (hash === '') {
+        const [, hash] = as.split('#');// Scroll to top if the hash is just `#` with no value or `#top`
+// To mirror browsers
+        if (hash === '' || hash === 'top') {
             window.scrollTo(0, 0);
             return;
         }// First we check if the element by id is found
@@ -817,24 +850,6 @@ class Router {
 
     urlIsNew(asPath) {
         return this.asPath !== asPath;
-    }
-
-    _resolveHref(parsedHref, pages, applyBasePath = true) {
-        const {pathname} = parsedHref;
-        const cleanPathname = (0, _normalizeTrailingSlash.removePathTrailingSlash)((0, _denormalizePagePath.denormalizePagePath)(applyBasePath ? delBasePath(pathname) : pathname));
-        if (cleanPathname === '/404' || cleanPathname === '/_error') {
-            return parsedHref;
-        }// handle resolving href for dynamic routes
-        if (!pages.includes(cleanPathname)) {// eslint-disable-next-line array-callback-return
-            pages.some(page => {
-                if ((0, _isDynamic.isDynamicRoute)(page) && (0, _routeRegex.getRouteRegex)(page).re.test(cleanPathname)) {
-                    parsedHref.pathname = applyBasePath ? addBasePath(page) : page;
-                    return true;
-                }
-            });
-        }
-        parsedHref.pathname = (0, _normalizeTrailingSlash.removePathTrailingSlash)(parsedHref.pathname);
-        return parsedHref;
     }
 
     /**
@@ -858,17 +873,31 @@ class Router {
             }
         }
         const pages = await this.pageLoader.getPageList();
-        parsed = this._resolveHref(parsed, pages, false);
-        if (parsed.pathname !== pathname) {
-            pathname = parsed.pathname;
-            url = (0, _utils.formatWithValidation)(parsed);
-        }// Prefetch is not supported in development mode because it would trigger on-demand-entries
+        let resolvedAs = asPath;
+        if (process.env.__NEXT_HAS_REWRITES && asPath.startsWith('/')) {
+            let rewrites;
+            ({__rewrites: rewrites} = await (0, _routeLoader.getClientBuildManifest)());
+            const rewritesResult = (0, _resolveRewrites.default)(addBasePath(addLocale(asPath, this.locale)), pages, rewrites, parsed.query, p => resolveDynamicRoute(p, pages), this.locales);
+            resolvedAs = delLocale(delBasePath(rewritesResult.asPath), this.locale);
+            if (rewritesResult.matchedPage && rewritesResult.resolvedHref) {// if this directly matches a page we need to update the href to
+// allow the correct page chunk to be loaded
+                pathname = rewritesResult.resolvedHref;
+                parsed.pathname = pathname;
+                url = (0, _utils.formatWithValidation)(parsed);
+            }
+        } else {
+            parsed.pathname = resolveDynamicRoute(parsed.pathname, pages);
+            if (parsed.pathname !== pathname) {
+                pathname = parsed.pathname;
+                url = (0, _utils.formatWithValidation)(parsed);
+            }
+        }
+        const route = (0, _normalizeTrailingSlash.removePathTrailingSlash)(pathname);// Prefetch is not supported in development mode because it would trigger on-demand-entries
         if (process.env.NODE_ENV !== 'production') {
             return;
         }
-        const route = (0, _normalizeTrailingSlash.removePathTrailingSlash)(pathname);
-        await Promise.all([this.pageLoader._isSsg(url).then(isSsg => {
-            return isSsg ? this._getStaticData(this.pageLoader.getDataHref(url, asPath, true, typeof options.locale !== 'undefined' ? options.locale : this.locale)) : false;
+        await Promise.all([this.pageLoader._isSsg(route).then(isSsg => {
+            return isSsg ? this._getStaticData(this.pageLoader.getDataHref(url, resolvedAs, true, typeof options.locale !== 'undefined' ? options.locale : this.locale)) : false;
         }), this.pageLoader[options.priority ? 'loadPage' : 'prefetch'](route)]);
     }
 
@@ -910,7 +939,7 @@ class Router {
 
     _getStaticData(dataHref) {
         const {href: cacheKey} = new URL(dataHref, window.location.href);
-        if (process.env.NODE_ENV === 'production' && this.sdc[cacheKey]) {
+        if (process.env.NODE_ENV === 'production' && !this.isPreview && this.sdc[cacheKey]) {
             return Promise.resolve(this.sdc[cacheKey]);
         }
         return fetchNextData(dataHref, this.isSsr).then(data => {
@@ -920,7 +949,17 @@ class Router {
     }
 
     _getServerData(dataHref) {
-        return fetchNextData(dataHref, this.isSsr);
+        const {href: resourceKey} = new URL(dataHref, window.location.href);
+        if (this.sdr[resourceKey]) {
+            return this.sdr[resourceKey];
+        }
+        return this.sdr[resourceKey] = fetchNextData(dataHref, this.isSsr).then(data => {
+            delete this.sdr[resourceKey];
+            return data;
+        }).catch(err => {
+            delete this.sdr[resourceKey];
+            throw err;
+        });
     }
 
     getInitialProps(Component, ctx) {

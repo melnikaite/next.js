@@ -4,10 +4,10 @@ export declare const preprocessors: {
     readonly resize: {
         readonly name: "Resize";
         readonly description: "Resize the image before compressing";
-        readonly instantiate: () => Promise<(buffer: Uint8Array | Buffer, input_width: number, input_height: number, { width, height, method, premultiply, linearRGB, }: {
+        readonly instantiate: () => Promise<(buffer: Buffer | Uint8Array, input_width: number, input_height: number, { width, height, method, premultiply, linearRGB, }: {
             width?: number | undefined;
             height?: number | undefined;
-            method: "triangle" | "catrom" | "mitchell" | "lanczos3";
+            method: 'triangle' | 'catrom' | 'mitchell' | 'lanczos3';
             premultiply: boolean;
             linearRGB: boolean;
         }) => ImageData>;
@@ -21,7 +21,7 @@ export declare const preprocessors: {
     readonly rotate: {
         readonly name: "Rotate";
         readonly description: "Rotate image";
-        readonly instantiate: () => Promise<(buffer: Uint8Array | Buffer, width: number, height: number, { numRotations }: {
+        readonly instantiate: () => Promise<(buffer: Buffer | Uint8Array, width: number, height: number, { numRotations }: {
             numRotations: number;
         }) => Promise<ImageData>>;
         readonly defaultOptions: {
@@ -119,7 +119,7 @@ export declare const codecs: {
         readonly detectors: readonly [RegExp];
         readonly dec: () => Promise<any>;
         readonly enc: () => Promise<{
-            encode: (buffer: Uint8Array | Buffer, width: number, height: number, opts: any) => any;
+            encode: (buffer: Buffer | Uint8Array, width: number, height: number, opts: any) => any;
         }>;
         readonly defaultEncoderOptions: {
             readonly level: 2;

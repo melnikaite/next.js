@@ -9,22 +9,21 @@ export declare type ImageLoaderProps = {
 };
 declare const VALID_LAYOUT_VALUES: readonly ["fill", "fixed", "intrinsic", "responsive", undefined];
 declare type LayoutValue = typeof VALID_LAYOUT_VALUES[number];
+declare type PlaceholderValue = 'blur' | 'empty';
 declare type ImgElementStyle = NonNullable<JSX.IntrinsicElements['img']['style']>;
-export declare type ImageProps = Omit<JSX.IntrinsicElements['img'], 'src' | 'srcSet' | 'ref' | 'width' | 'height' | 'loading' | 'style'> & {
+interface StaticImageData {
     src: string;
-    loader?: ImageLoader;
-    quality?: number | string;
-    priority?: boolean;
-    loading?: LoadingValue;
-    unoptimized?: boolean;
-    objectFit?: ImgElementStyle['objectFit'];
-    objectPosition?: ImgElementStyle['objectPosition'];
+    height: number;
+    width: number;
+    blurDataURL?: string;
+}
+interface StaticRequire {
+    default: StaticImageData;
+}
+declare type StaticImport = StaticRequire | StaticImageData;
+declare type StringImageProps = {
+    src: string;
 } & ({
-    width?: never;
-    height?: never;
-    /** @deprecated Use `layout="fill"` instead */
-    unsized: true;
-} | {
     width?: never;
     height?: never;
     layout: 'fill';
@@ -32,6 +31,29 @@ export declare type ImageProps = Omit<JSX.IntrinsicElements['img'], 'src' | 'src
     width: number | string;
     height: number | string;
     layout?: Exclude<LayoutValue, 'fill'>;
+}) & ({
+    placeholder?: Exclude<PlaceholderValue, 'blur'>;
+    blurDataURL?: never;
+} | {
+    placeholder: 'blur';
+    blurDataURL: string;
 });
-export default function Image({ src, sizes, unoptimized, priority, loading, className, quality, width, height, objectFit, objectPosition, loader, ...all }: ImageProps): JSX.Element;
+declare type ObjectImageProps = {
+    src: StaticImport;
+    width?: number | string;
+    height?: number | string;
+    layout?: LayoutValue;
+    placeholder?: PlaceholderValue;
+    blurDataURL?: never;
+};
+export declare type ImageProps = Omit<JSX.IntrinsicElements['img'], 'src' | 'srcSet' | 'ref' | 'width' | 'height' | 'loading' | 'style'> & {
+    loader?: ImageLoader;
+    quality?: number | string;
+    priority?: boolean;
+    loading?: LoadingValue;
+    unoptimized?: boolean;
+    objectFit?: ImgElementStyle['objectFit'];
+    objectPosition?: ImgElementStyle['objectPosition'];
+} & (StringImageProps | ObjectImageProps);
+export default function Image({ src, sizes, unoptimized, priority, loading, className, quality, width, height, objectFit, objectPosition, loader, placeholder, blurDataURL, ...all }: ImageProps): JSX.Element;
 export {};

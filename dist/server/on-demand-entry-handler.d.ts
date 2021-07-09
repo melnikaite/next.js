@@ -1,4 +1,3 @@
-/// <reference types="node" />
 import { IncomingMessage, ServerResponse } from 'http';
 import { webpack } from 'next/dist/compiled/webpack/webpack';
 export declare const ADDED: unique symbol;
@@ -19,6 +18,6 @@ export default function onDemandEntryHandler(watcher: any, multiCompiler: webpac
     maxInactiveAge: number;
     pagesBufferLength: number;
 }): {
-    ensurePage(page: string): Promise<unknown>;
+    ensurePage(page: string): Promise<void>;
     middleware(req: IncomingMessage, res: ServerResponse, next: Function): any;
 };

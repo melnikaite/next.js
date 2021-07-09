@@ -25,7 +25,7 @@ var _routeRegex = require("./utils/route-regex");
 
 function _interopRequireDefault(obj) {
     return obj && obj.__esModule ? obj : {default: obj};
-}/* global __NEXT_DATA__ */ // tslint:disable:no-console
+}// tslint:disable:no-console
 let detectDomainLocale;
 if (process.env.__NEXT_I18N_SUPPORT) {
     detectDomainLocale = require('../i18n/detect-domain-locale').detectDomainLocale;
@@ -54,14 +54,20 @@ function getDomainLocale(path, locale, locales, domainLocales) {
 
 function addLocale(path, locale, defaultLocale) {
     if (process.env.__NEXT_I18N_SUPPORT) {
-        return locale && locale !== defaultLocale && !path.startsWith('/' + locale + '/') && path !== '/' + locale ? addPathPrefix(path, '/' + locale) : path;
+        const pathname = pathNoQueryHash(path);
+        const pathLower = pathname.toLowerCase();
+        const localeLower = locale && locale.toLowerCase();
+        return locale && locale !== defaultLocale && !pathLower.startsWith('/' + localeLower + '/') && pathLower !== '/' + localeLower ? addPathPrefix(path, '/' + locale) : path;
     }
     return path;
 }
 
 function delLocale(path, locale) {
     if (process.env.__NEXT_I18N_SUPPORT) {
-        return locale && (path.startsWith('/' + locale + '/') || path === '/' + locale) ? path.substr(locale.length + 1) || '/' : path;
+        const pathname = pathNoQueryHash(path);
+        const pathLower = pathname.toLowerCase();
+        const localeLower = locale && locale.toLowerCase();
+        return locale && (pathLower.startsWith('/' + localeLower + '/') || pathLower === '/' + localeLower) ? (pathname.length === locale.length + 1 ? '/' : '') + path.substr(locale.length + 1) : path;
     }
     return path;
 }
@@ -93,7 +99,7 @@ function delBasePath(path) {
 /**
  * Detects whether a given url is routable by the Next.js router (browser only).
  */function isLocalURL(url) {// prevent a hydration mismatch on href for url with anchor refs
-    if (url.startsWith('/') || url.startsWith('#')) return true;
+    if (url.startsWith('/') || url.startsWith('#') || url.startsWith('?')) return true;
     try {// absolute urls can be local if they are on the same origin
         const locationOrigin = (0, _utils.getLocationOrigin)();
         const resolved = new URL(url, locationOrigin);
@@ -149,9 +155,14 @@ function omitParmsFromQuery(query, params) {
 /**
  * Resolves a given hyperlink with a certain router state (basePath not included).
  * Preserves absolute urls.
- */function resolveHref(currentPath, href, resolveAs) {// we use a dummy base url for relative urls
-    const base = new URL(currentPath, 'http://n');
-    const urlAsString = typeof href === 'string' ? href : (0, _utils.formatWithValidation)(href);// Return because it cannot be routed by the Next.js router
+ */function resolveHref(router, href, resolveAs) {// we use a dummy base url for relative urls
+    let base;
+    const urlAsString = typeof href === 'string' ? href : (0, _utils.formatWithValidation)(href);
+    try {
+        base = new URL(urlAsString.startsWith('#') ? router.asPath : router.pathname, 'http://n');
+    } catch (_) {// fallback to / for invalid asPath values e.g. //
+        base = new URL('/', 'http://n');
+    }// Return because it cannot be routed by the Next.js router
     if (!isLocalURL(urlAsString)) {
         return resolveAs ? [urlAsString] : urlAsString;
     }
@@ -184,14 +195,14 @@ function stripOrigin(url) {
 
 function prepareUrlAs(router, url, as) {// If url and as provided as an object representation,
 // we'll format them into the string version here.
-    let [resolvedHref, resolvedAs] = resolveHref(router.pathname, url, true);
+    let [resolvedHref, resolvedAs] = resolveHref(router, url, true);
     const origin = (0, _utils.getLocationOrigin)();
     const hrefHadOrigin = resolvedHref.startsWith(origin);
     const asHadOrigin = resolvedAs && resolvedAs.startsWith(origin);
     resolvedHref = stripOrigin(resolvedHref);
     resolvedAs = resolvedAs ? stripOrigin(resolvedAs) : resolvedAs;
     const preparedUrl = hrefHadOrigin ? resolvedHref : addBasePath(resolvedHref);
-    const preparedAs = as ? stripOrigin(resolveHref(router.pathname, as)) : resolvedAs || resolvedHref;
+    const preparedAs = as ? stripOrigin(resolveHref(router, as)) : resolvedAs || resolvedHref;
     return {url: preparedUrl, as: asHadOrigin ? preparedAs : addBasePath(preparedAs)};
 }
 
@@ -396,7 +407,7 @@ class Router {
 // back from external site
         this.isSsr = true;
         this.isFallback = isFallback;
-        this.isReady = !!(self.__NEXT_DATA__.gssp || self.__NEXT_DATA__.gip || !autoExportDynamic && !self.location.search);
+        this.isReady = !!(self.__NEXT_DATA__.gssp || self.__NEXT_DATA__.gip || !autoExportDynamic && !self.location.search && !process.env.__NEXT_HAS_REWRITES);
         this.isPreview = !!isPreview;
         this.isLocaleDomain = false;
         if (process.env.__NEXT_I18N_SUPPORT) {
@@ -410,10 +421,12 @@ class Router {
 // throw an error as it's considered invalid
             if (_as.substr(0, 2) !== '//') {// in order for `e.state` to work on the `onpopstate` event
 // we have to register the initial route upon initialization
+                const options = {locale};
+                options._shouldResolveHref = _as !== _pathname;
                 this.changeState('replaceState', (0, _utils.formatWithValidation)({
                     pathname: addBasePath(_pathname),
                     query: _query
-                }), (0, _utils.getURL)(), {locale});
+                }), (0, _utils.getURL)(), options);
             }
             window.addEventListener('popstate', this.onPopState);// enable custom scroll restoration handling when available
 // otherwise fallback to browser's default handling
@@ -468,18 +481,15 @@ class Router {
     }
 
     async change(method, url, as, options, forcedScroll) {
-        var _options$scroll;
         if (!isLocalURL(url)) {
             window.location.href = url;
             return false;
-        }// for static pages with query params in the URL we delay
+        }
+        const shouldResolveHref = url === as || options._h || options._shouldResolveHref;// for static pages with query params in the URL we delay
 // marking the router ready until after the query is updated
         if (options._h) {
             this.isReady = true;
-        }// Default to scroll reset behavior unless explicitly specified to be
-// `false`! This makes the behavior between using `Router#push` and a
-// `<Link />` consistent.
-        options.scroll = !!((_options$scroll = options.scroll) != null ? _options$scroll : true);
+        }
         let localeChange = options.locale !== this.locale;
         if (process.env.__NEXT_I18N_SUPPORT) {
             this.locale = options.locale === false ? this.defaultLocale : options.locale || this.locale;
@@ -573,20 +583,22 @@ class Router {
 // point by either next/link or router.push/replace so strip the
 // basePath from the pathname to match the pages dir 1-to-1
         pathname = pathname ? (0, _normalizeTrailingSlash.removePathTrailingSlash)(delBasePath(pathname)) : pathname;
-        if (pathname !== '/_error') {
+        if (shouldResolveHref && pathname !== '/_error') {
+            ;options._shouldResolveHref = true;
             if (process.env.__NEXT_HAS_REWRITES && as.startsWith('/')) {
-                const rewritesResult = (0, _resolveRewrites.default)(addBasePath(addLocale(delBasePath(as), this.locale)), pages, rewrites, query, p => resolveDynamicRoute(p, pages), this.locales);
+                const rewritesResult = (0, _resolveRewrites.default)(addBasePath(addLocale(cleanedAs, this.locale)), pages, rewrites, query, p => resolveDynamicRoute(p, pages), this.locales);
                 resolvedAs = rewritesResult.asPath;
                 if (rewritesResult.matchedPage && rewritesResult.resolvedHref) {// if this directly matches a page we need to update the href to
 // allow the correct page chunk to be loaded
                     pathname = rewritesResult.resolvedHref;
-                    parsed.pathname = pathname;
+                    parsed.pathname = addBasePath(pathname);
                     url = (0, _utils.formatWithValidation)(parsed);
                 }
             } else {
                 parsed.pathname = resolveDynamicRoute(pathname, pages);
                 if (parsed.pathname !== pathname) {
                     pathname = parsed.pathname;
+                    parsed.pathname = addBasePath(pathname);
                     url = (0, _utils.formatWithValidation)(parsed);
                 }
             }
@@ -626,7 +638,7 @@ class Router {
         }
         Router.events.emit('routeChangeStart', as, routeProps);
         try {
-            var _self$__NEXT_DATA__$p, _self$__NEXT_DATA__$p2;
+            var _self$__NEXT_DATA__$p, _self$__NEXT_DATA__$p2, _options$scroll;
             let routeInfo = await this.getRouteInfo(route, pathname, query, as, resolvedAs, routeProps);
             let {error, props, __N_SSG, __N_SSP} = routeInfo;// handle redirect on client-transition
             if ((__N_SSG || __N_SSP) && props) {
@@ -637,10 +649,8 @@ class Router {
                     if (destination.startsWith('/')) {
                         const parsedHref = (0, _parseRelativeUrl.parseRelativeUrl)(destination);
                         parsedHref.pathname = resolveDynamicRoute(parsedHref.pathname, pages);
-                        if (pages.includes(parsedHref.pathname)) {
-                            const {url: newUrl, as: newAs} = prepareUrlAs(this, destination, destination);
-                            return this.change(method, newUrl, newAs, options);
-                        }
+                        const {url: newUrl, as: newAs} = prepareUrlAs(this, destination, destination);
+                        return this.change(method, newUrl, newAs, options);
                     }
                     window.location.href = destination;
                     return new Promise(() => {
@@ -663,16 +673,15 @@ class Router {
             if (process.env.NODE_ENV !== 'production') {
                 const appComp = this.components['/_app'].Component;
                 window.next.isPrerendered = appComp.getInitialProps === appComp.origGetInitialProps && !routeInfo.Component.getInitialProps;
-            }// shallow routing is only allowed for same page URL changes.
-            const isValidShallowRoute = options.shallow && this.route === route;
+            }
             if (options._h && pathname === '/_error' && ((_self$__NEXT_DATA__$p = self.__NEXT_DATA__.props) == null ? void 0 : (_self$__NEXT_DATA__$p2 = _self$__NEXT_DATA__$p.pageProps) == null ? void 0 : _self$__NEXT_DATA__$p2.statusCode) === 500 && props != null && props.pageProps) {// ensure statusCode is still correct for static 500 page
 // when updating query information
                 props.pageProps.statusCode = 500;
-            }
-            await this.set(route, pathname, query, cleanedAs, routeInfo, forcedScroll || (isValidShallowRoute || !options.scroll ? null : {
-                x: 0,
-                y: 0
-            })).catch(e => {
+            }// shallow routing is only allowed for same page URL changes.
+            const isValidShallowRoute = options.shallow && this.route === route;
+            const shouldScroll = (_options$scroll = options.scroll) != null ? _options$scroll : !isValidShallowRoute;
+            const resetScroll = shouldScroll ? {x: 0, y: 0} : null;
+            await this.set(route, pathname, query, cleanedAs, routeInfo, forcedScroll != null ? forcedScroll : resetScroll).catch(e => {
                 if (e.cancelled) error = error || e; else throw e;
             });
             if (error) {
@@ -788,7 +797,14 @@ class Router {
                 }), resolvedAs, __N_SSG, this.locale);
             }
             const props = await this._getData(() => __N_SSG ? this._getStaticData(dataHref) : __N_SSP ? this._getServerData(dataHref) : this.getInitialProps(Component,// we provide AppTree later so this needs to be `any`
-                {pathname, query, asPath: as}));
+                {
+                    pathname,
+                    query,
+                    asPath: as,
+                    locale: this.locale,
+                    locales: this.locales,
+                    defaultLocale: this.defaultLocale
+                }));
             routeInfo.props = props;
             this.components[route] = routeInfo;
             return routeInfo;
@@ -889,6 +905,7 @@ class Router {
             parsed.pathname = resolveDynamicRoute(parsed.pathname, pages);
             if (parsed.pathname !== pathname) {
                 pathname = parsed.pathname;
+                parsed.pathname = pathname;
                 url = (0, _utils.formatWithValidation)(parsed);
             }
         }

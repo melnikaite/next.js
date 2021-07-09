@@ -8,6 +8,7 @@ export declare type DomainLocales = Array<{
 export declare type NextConfig = {
     [key: string]: any;
 } & {
+    cleanDistDir?: boolean;
     i18n?: {
         locales: string[];
         defaultLocale: string;
@@ -22,10 +23,14 @@ export declare type NextConfig = {
     }>;
     redirects?: () => Promise<Redirect[]>;
     trailingSlash?: boolean;
+    webpack5?: false;
+    excludeDefaultMomentLocales?: boolean;
     future: {
+        /**
+         * @deprecated this options was moved to the top level
+         */
+        webpack5?: false;
         strictPostcssConfiguration?: boolean;
-        excludeDefaultMomentLocales?: boolean;
-        webpack5?: boolean;
     };
     experimental: {
         cpus?: number;
@@ -35,21 +40,21 @@ export declare type NextConfig = {
         reactMode?: 'legacy' | 'concurrent' | 'blocking';
         workerThreads?: boolean;
         pageEnv?: boolean;
-        optimizeFonts?: boolean;
         optimizeImages?: boolean;
         optimizeCss?: boolean;
         scrollRestoration?: boolean;
-        scriptLoader?: boolean;
         stats?: boolean;
         externalDir?: boolean;
-        serialWebpackBuild?: boolean;
-        babelMultiThread?: boolean;
         conformance?: boolean;
         amp?: {
             optimizer?: any;
             validator?: string;
             skipValidation?: boolean;
         };
+        reactRoot?: boolean;
+        disableOptimizedLoading?: boolean;
+        gzipSize?: boolean;
+        craCompat?: boolean;
     };
 };
 export declare const defaultConfig: NextConfig;

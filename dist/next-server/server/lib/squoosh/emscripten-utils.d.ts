@@ -6,6 +6,6 @@ export declare function instantiateEmscriptenWasm(factory: (args: {
     decode?: (buffer: Buffer | Uint8Array, width: number, height: number, opts: any) => Buffer;
     encode?: (buffer: Buffer | Uint8Array, width: number, height: number, opts: any) => Buffer;
 }, path: string): {
-    decode?: ((buffer: Uint8Array | Buffer, width: number, height: number, opts: any) => Buffer) | undefined;
-    encode?: ((buffer: Uint8Array | Buffer, width: number, height: number, opts: any) => Buffer) | undefined;
+    decode?: ((buffer: Buffer | Uint8Array, width: number, height: number, opts: any) => Buffer) | undefined;
+    encode?: ((buffer: Buffer | Uint8Array, width: number, height: number, opts: any) => Buffer) | undefined;
 };

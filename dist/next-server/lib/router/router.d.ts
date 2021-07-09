@@ -3,6 +3,7 @@ import { ParsedUrlQuery } from 'querystring';
 import { ComponentType } from 'react';
 import { UrlObject } from 'url';
 import { GoodPageCache, StyleSheetTuple } from '../../../client/page-loader';
+import { RouterEvent } from '../../../client/router';
 import { DomainLocales } from '../../server/config';
 import { MittEmitter } from '../mitt';
 import { NextPageContext, NEXT_DATA } from '../utils';
@@ -43,7 +44,7 @@ export declare function interpolateAs(route: string, asPathname: string, query: 
  * Resolves a given hyperlink with a certain router state (basePath not included).
  * Preserves absolute urls.
  */
-export declare function resolveHref(currentPath: string, href: Url, resolveAs?: boolean): string;
+export declare function resolveHref(router: NextRouter, href: Url, resolveAs?: boolean): string;
 export declare type BaseRouter = {
     route: string;
     pathname: string;
@@ -106,7 +107,7 @@ export default class Router implements BaseRouter {
     clc: ComponentLoadCancel;
     pageLoader: any;
     _bps: BeforePopStateCallback | undefined;
-    events: MittEmitter;
+    events: MittEmitter<RouterEvent>;
     _wrapApp: (App: AppComponent) => any;
     isSsr: boolean;
     isFallback: boolean;
@@ -120,14 +121,14 @@ export default class Router implements BaseRouter {
     isPreview: boolean;
     isLocaleDomain: boolean;
     private _idx;
-    static events: MittEmitter;
+    static events: MittEmitter<RouterEvent>;
     constructor(pathname: string, query: ParsedUrlQuery, as: string, { initialProps, pageLoader, App, wrapApp, Component, err, subscription, isFallback, locale, locales, defaultLocale, domainLocales, isPreview, }: {
         subscription: Subscription;
         initialProps: any;
         pageLoader: any;
         Component: ComponentType;
         App: AppComponent;
-        wrapApp: (App: AppComponent) => any;
+        wrapApp: (WrapAppComponent: AppComponent) => any;
         err?: Error;
         isFallback: boolean;
         locale?: string;

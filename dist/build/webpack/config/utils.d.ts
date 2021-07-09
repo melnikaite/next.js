@@ -11,6 +11,7 @@ export declare type ConfigurationContext = {
     sassOptions: any;
     productionBrowserSourceMaps: boolean;
     future: NextConfig['future'];
+    isCraCompat?: boolean;
 };
 export declare type ConfigurationFn = (a: webpack.Configuration) => webpack.Configuration;
 export declare const pipe: <R>(...fns: ((a: R) => R | Promise<R>)[]) => (param: R) => R | Promise<R>;
